@@ -8,33 +8,80 @@ local next, rawget, pairs, pcall, error, type, setfenv, loadstring
 local table_concat, string_dump, string_format, string_match, math_huge
 	= table.concat, string.dump, string.format, string.match, math.huge
 
--- Recursively counts occurrences of objects (non-primitives including strings) in a table.
-local function count_objects(value)
+local registered_mt_serialization = {}
+local registered_mt_deserialization = {}
+
+local primitive_types = {
+	boolean = true,
+	number = true,
+	string = true,
+	table = true,
+	["nil"] = true,
+}
+local function is_primitive_type(typename)
+	return primitive_types[typename] or false
+end
+
+-- Recursively
+-- (1) prepares objects with custom metatables for serialization;
+-- (2) counts occurrences of objects (non-primitives including strings) in a table.
+local function prepare_objects(value)
 	local counts = {}
+	local serialized = {}
+	local type_lookup = {}
 	if value == nil then
 		-- Early return for nil; tables can't contain nil
 		return counts
 	end
-	local function count_values(val)
+	local function count_values(val, disallow)
 		local type_ = type(val)
+		if disallow[val] then
+			error("unsupported recursive data structure")
+		end
 		if type_ == "boolean" or type_ == "number" then
 			return
 		end
 		local count = counts[val]
 		counts[val] = (count or 0) + 1
-		if type_ == "table" then
+		local mt = getmetatable(val)
+		if mt and registered_mt_serialization[mt] then
+			if not count then
+				local data, typename = registered_mt_serialization[mt](val)
+				serialized[val] = data
+				type_lookup[val] = typename
+				if disallow[data] then
+					error("unsupported recursive data structure")
+				end
+				if data == val then
+					if type_ == "table" then
+						for k, v in pairs(val) do
+							count_values(k, disallow)
+							count_values(v, disallow)
+						end
+					elseif not is_primitive_type(type_) then
+						error(("serialization of %s resulted in unsupported type: %s"):format(typename, type_))
+					end
+				else
+					if not is_primitive_type then
+						disallow[data], disallow[val] = true, true
+					end
+					prepare_objects(data, disallow)
+					disallow[data], disallow[val] = nil, nil
+				end
+			end
+		elseif type_ == "table" then
 			if not count then
 				for k, v in pairs(val) do
-					count_values(k)
-					count_values(v)
+					count_values(k, disallow)
+					count_values(v, disallow)
 				end
 			end
 		elseif type_ ~= "string" and type_ ~= "function" then
 			error("unsupported type: " .. type_)
 		end
 	end
-	count_values(value)
-	return counts
+	count_values(value, {})
+	return counts, serialized, type_lookup
 end
 
 -- Build a "set" of Lua keywords. These can't be used as short key names.
@@ -66,7 +113,11 @@ local function serialize(value, write)
 	local references = {}
 	-- Circular tables that must be filled using `table[key] = value` statements
 	local to_fill = {}
-	for object, count in pairs(count_objects(value)) do
+	local counts, serialized, typenames = prepare_objects(value)
+	if next(serialized) ~= nil then
+		write "local D = D or function(tbl) return tbl end;"
+	end
+	for object, count in pairs(counts) do
 		local type_ = type(object)
 		-- Object must appear more than once. If it is a string, the reference has to be shorter than the string.
 		if count >= 2 and (type_ ~= "string" or #reference + 5 < #object) then
@@ -96,7 +147,7 @@ local function serialize(value, write)
 	local function use_short_key(key)
 		return not references[key] and type(key) == "string" and (not keywords[key]) and string_match(key, "^[%a_][%a%d_]*$")
 	end
-	local function dump(value)
+	local function dump(value, skip_mt)
 		-- Primitive types
 		if value == nil then
 			return write("nil")
@@ -118,6 +169,15 @@ local function serialize(value, write)
 			else
 				return write(string_format("%.17g", value))
 			end
+		end
+		if (not skip_mt) and serialized[value] then
+			local data = serialized[value]
+			write "D("
+			dump(serialized[value], data == value)
+			write ","
+			dump(typenames[value])
+			write ")"
+			return
 		end
 		-- Reference types: table, function and string
 		local ref = references[value]
@@ -190,6 +250,30 @@ local function serialize(value, write)
 	dump(value)
 end
 
+function core.register_serializable(typename, mt, serialize, deserialize)
+	if not is_primitive_type(type(typename)) then
+		return error("typename may not be a referenced type")
+	elseif registered_mt_serialization[mt] then
+		return error("metatable already registered for serialization")
+	elseif registered_mt_deserialization[typename] then
+		return error(("type %s already registered as serializable"):format(typename))
+	end
+	if type(serialize) ~= "function" then
+		serialize = function(tbl)
+			return tbl
+		end
+	end
+	if type(deserialize) ~= "function" then
+		deserialize = function(tbl)
+			return setmetatable(tbl, mt)
+		end
+	end
+	registered_mt_serialization[mt] = function(tbl)
+		return serialize(tbl), typename
+	end
+	registered_mt_deserialization[typename] = deserialize
+end
+
 function core.serialize(value)
 	local rope = {}
 	serialize(value, function(text)
@@ -200,6 +284,14 @@ function core.serialize(value)
 end
 
 local function dummy_func() end
+
+local function deserialize_object(obj, typename)
+	local d = registered_mt_deserialization[typename]
+	if d then
+		return d(obj)
+	end
+	return obj
+end
 
 function core.deserialize(str, safe)
 	-- Backwards compatibility
@@ -216,7 +308,7 @@ function core.deserialize(str, safe)
 	if not func then return nil, err end
 
 	-- math.huge was serialized to inf and NaNs to nan by Lua in Minetest 5.6, so we have to support this here
-	local env = {inf = math_huge, nan = 0/0}
+	local env = {inf = math_huge, nan = 0/0, D = deserialize_object}
 	if safe then
 		env.loadstring = dummy_func
 	else

@@ -45,6 +45,14 @@ describe("serialize", function()
 		local preserved_value = core.deserialize(core.serialize(value))
 		assert_same(value, preserved_value)
 	end
+	local function assert_strictly_preserves(value)
+		local preserved_value = core.deserialize(core.serialize(value))
+		assert.equals(value, preserved_value)
+	end
+	local function assert_compatibly_preserves(value)
+		local preserved_value = loadstring(core.serialize(value))()
+		assert_same(value, preserved_value)
+	end
 	it("works", function()
 		assert_preserves({cat={sound="nyan", speed=400}, dog={sound="woof"}})
 	end)
@@ -113,7 +121,9 @@ describe("serialize", function()
 	it("vectors work", function()
 		local v = vector.new(1, 2, 3)
 		assert_preserves({v})
-		assert_preserves(v)
+		assert_compatibly_preserves({v})
+		assert_strictly_preserves(v)
+		assert_compatibly_preserves(v)
 
 		-- abuse
 		v = vector.new(1, 2, 3)
