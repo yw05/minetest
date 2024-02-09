@@ -124,11 +124,33 @@ describe("serialize", function()
 		assert_compatibly_preserves({v})
 		assert_strictly_preserves(v)
 		assert_compatibly_preserves(v)
+		assert(core.deserialize(core.serialize(v)):check())
 
 		-- abuse
 		v = vector.new(1, 2, 3)
 		v.a = "bla"
 		assert_preserves(v)
+	end)
+
+	it("correctly handles typed objects with multiple references", function()
+		local mt = {
+			__eq = function(x, y)
+				return x[1] == y[1]
+			end,
+		}
+		local function serializer(t)
+			return t[1]
+		end
+		local function deserializer(x)
+			return setmetatable({x}, mt)
+		end
+		core.register_serializable("mref_test", mt, serializer, deserializer)
+		local x, y = deserializer(1), deserializer(1)
+		local t = core.deserialize(core.serialize{x, x, y})
+		assert.equals(x, t[1])
+		assert.equals(x, t[3])
+		assert(rawequal(t[1], t[2]))
+		assert(not rawequal(t[1], t[3]))
 	end)
 
 	it("handles keywords as keys", function()

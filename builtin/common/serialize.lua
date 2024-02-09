@@ -52,7 +52,7 @@ local function prepare_objects(value)
 				if disallow[data] then
 					error("unsupported recursive data structure")
 				end
-				if data == val then
+				if rawequal(data, val) then
 					if type_ == "table" then
 						for k, v in pairs(val) do
 							count_values(k, disallow)
@@ -124,21 +124,24 @@ local function serialize(value, write)
 			if refnum == 1 then
 				write"local _={};" -- initialize reference table
 			end
-			write"_["
-			write(reference)
-			write("]=")
-			if type_ == "table" then
-				write("{}")
-			elseif type_ == "function" then
-				write(dump_func(object))
-			elseif type_ == "string" then
-				write(quote(object))
+			local delay_assignment = serialized[object] ~= nil and serialized[object] ~= object
+			if not delay_assignment then
+				write"_["
+				write(reference)
+				write("]=")
+				if type_ == "table" then
+					write("{}")
+				elseif type_ == "function" then
+					write(dump_func(object))
+				elseif type_ == "string" then
+					write(quote(object))
+				end
+				write(";")
+				if type_ == "table" then
+					to_fill[object] = reference
+				end
 			end
-			write(";")
 			references[object] = reference
-			if type_ == "table" then
-				to_fill[object] = reference
-			end
 			refnum = refnum + 1
 			reference = ("%d"):format(refnum)
 		end
@@ -170,21 +173,21 @@ local function serialize(value, write)
 				return write(string_format("%.17g", value))
 			end
 		end
-		if (not skip_mt) and serialized[value] then
-			local data = serialized[value]
-			write "D("
-			dump(serialized[value], data == value)
-			write ","
-			dump(typenames[value])
-			write ")"
-			return
-		end
 		-- Reference types: table, function and string
 		local ref = references[value]
 		if ref then
 			write"_["
 			write(ref)
 			return write"]"
+		end
+		if (not skip_mt) and serialized[value] then
+			local data = serialized[value]
+			write "D("
+			dump(serialized[value], rawequal(data, value))
+			write ","
+			dump(typenames[value])
+			write ")"
+			return
 		end
 		if type_ == "string" then
 			return write(quote(value))
@@ -244,6 +247,19 @@ local function serialize(value, write)
 			write("=")
 			dump(v)
 			write(";")
+		end
+	end
+	for obj, data in pairs(serialized) do
+		local oref = references[obj]
+		local typename = typenames[obj]
+		if oref then
+			write("_[")
+			write(oref)
+			write("]=D(")
+			dump(data)
+			write(",")
+			dump(typename)
+			write(");")
 		end
 	end
 	write("return ")
