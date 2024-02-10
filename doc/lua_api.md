@@ -7063,6 +7063,10 @@ Misc.
       original object.
     * `name` is a non-referenced object (i.e. string, number, boolean). It may
       _not_ be nil.
+	* It is recommended to include the mod name as a prefix in `name`, such as
+	  `mymod:struct`, to aovid conflicting names. The `builtin:` prefix is
+	  indended for built-in data types and should not be used to name data
+	  types from mods.
     * If `serializer` is not provided, the identity function is used.
     * If `deserializer` is not provided, `function(obj) return setmetatable(obj, mt) end`
       is used.

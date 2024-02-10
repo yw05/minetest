@@ -355,3 +355,8 @@ function core.deserialize(str, safe)
 	end
 	return nil, value_or_err
 end
+
+if ItemStack then
+	local empty_stack = ItemStack()
+	core.register_serializable("__builtin:itemstack", getmetatable(empty_stack), empty_stack.to_string, ItemStack)
+end
