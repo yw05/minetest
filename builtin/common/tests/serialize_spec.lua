@@ -40,6 +40,25 @@ local t1, t2 = {x, x, y, y}, {x, y, x, y}
 assert.same(t1, t2) -- will succeed because it only checks whether the depths match
 assert(not pcall(assert_same, t1, t2)) -- will correctly fail because it checks whether the refs match
 
+local pair_mt = {
+	__eq = function(x, y)
+		return x[1] == y[1] and x[2] == y[2]
+	end,
+}
+local function pair(x, y)
+	return setmetatable({x, y}, pair_mt)
+end
+-- Use our own serialization functions to avoid incorrectly passing test related to references.
+local function serialize_pair(p)
+	return {p[1], p[2]}
+end
+local function deserialize_pair(p)
+	return pair(p[1], p[2])
+end
+core.register_serializable("pair", pair_mt, serialize_pair, deserialize_pair)
+assert.equals(pair(1, 2), pair(1, 2))
+assert.not_equals(pair(1, 2), pair(3, 4))
+
 describe("serialize", function()
 	local function assert_preserves(value)
 		local preserved_value = core.deserialize(core.serialize(value))
@@ -59,6 +78,10 @@ describe("serialize", function()
 
 	it("handles characters", function()
 		assert_preserves({escape_chars="\n\r\t\v\\\"\'", non_european="θשׁ٩∂"})
+	end)
+
+	it("handles nil", function()
+		assert_strictly_preserves(nil)
 	end)
 
 	it("handles NaN & infinities", function()
@@ -144,13 +167,109 @@ describe("serialize", function()
 		local function deserializer(x)
 			return setmetatable({x}, mt)
 		end
-		core.register_serializable("mref_test", mt, serializer, deserializer)
+		core.register_serializable("test_multiple_object_reference", mt, serializer, deserializer)
 		local x, y = deserializer(1), deserializer(1)
 		local t = core.deserialize(core.serialize{x, x, y})
 		assert.equals(x, t[1])
 		assert.equals(x, t[3])
 		assert(rawequal(t[1], t[2]))
 		assert(not rawequal(t[1], t[3]))
+	end)
+
+	it("correctly handles typed objects whose representation has multiple references", function()
+		local mt = {
+			__eq = function(x, y)
+				return x[1] == y[1]
+			end,
+		}
+		local cache = {}
+		local function serializer(t)
+			local idx = t[1]
+			if not cache[idx] then
+				cache[idx] = {idx}
+			end
+			return cache[idx]
+		end
+		local function deserializer(x)
+			return setmetatable({x[1]}, mt)
+		end
+		core.register_serializable("test_multiple_representation_reference", mt, serializer, deserializer)
+		local x, y = deserializer{1}, deserializer{1}
+		local t = core.deserialize(core.serialize{x, x, y})
+		assert.equals(x, t[1])
+		assert(rawequal(t[1], t[2]))
+		assert.equals(t[1], t[3])
+		assert(not rawequal(t[1], t[3]))
+	end)
+
+	it("correctly handles typed objects whose representation are recursive", function()
+		local mt = {
+			__eq = function(x, y)
+				return x[1] == y[1]
+			end,
+		}
+		local function serializer(t)
+			local u = {t[1], t[1]}
+			u[3] = u
+			return u
+		end
+		local function deserializer(t)
+			return setmetatable({t[1]}, mt)
+		end
+		core.register_serializable("test_recursive_representation", mt, serializer, deserializer)
+		local t = deserializer{1}
+		assert_strictly_preserves(t)
+	end)
+
+	it("correctly handles recursive typed objects with the identity function as serializer", function()
+		local mt = {
+			__eq = function(x, y)
+				return x[1] == y[1]
+			end,
+		}
+		core.register_serializable("test_recursive_typed", mt)
+		local t = setmetatable({1}, mt)
+		t[2] = t
+		assert_strictly_preserves(t)
+	end)
+
+	it("correctly handles binary trees", function()
+		local child = {pair(1, 1)}
+		local layers = 4
+		for i = 2, layers do
+			child[i] = pair(child[i-1], child[i-1])
+		end
+		local tree = child[layers]
+		assert_strictly_preserves(tree)
+		local node = core.deserialize(core.serialize(tree))
+		for i = 2, layers do
+			assert(rawequal(node[1], node[2]))
+			node = node[1]
+		end
+		assert_compatibly_preserves(tree)
+	end)
+
+	it("correctly handles deserialization chains", function()
+		local mt = {
+			__eq = function(a, b)
+				return a[1] == b[1]
+			end,
+		}
+		local function serializer(t)
+			return pair(t[1], t[1])
+		end
+		local function deserializer(t)
+			return setmetatable({t[1]}, mt)
+		end
+		core.register_serializable("test_serialization_chain", mt, serializer, deserializer)
+		local t = deserializer{1}
+		assert_strictly_preserves(t)
+	end)
+
+	it("rejects recursive typed data structures", function()
+		local p = pair()
+		p[1] = p
+		assert.has_error(function() core.serialize(p) end, "unsupported recursive data structure")
 	end)
 
 	it("handles keywords as keys", function()

@@ -15,7 +15,6 @@ local primitive_types = {
 	boolean = true,
 	number = true,
 	string = true,
-	table = true,
 	["nil"] = true,
 }
 local function is_primitive_type(typename)
@@ -29,9 +28,10 @@ local function prepare_objects(value)
 	local counts = {}
 	local serialized = {}
 	local type_lookup = {}
+	local object_order = {}
 	if value == nil then
 		-- Early return for nil; tables can't contain nil
-		return counts
+		return counts, serialized, type_lookup, object_order
 	end
 	local function count_values(val, disallow)
 		local type_ = type(val)
@@ -62,12 +62,14 @@ local function prepare_objects(value)
 						error(("serialization of %s resulted in unsupported type: %s"):format(typename, type_))
 					end
 				else
-					if not is_primitive_type then
-						disallow[data], disallow[val] = true, true
+					if not is_primitive_type(type(val)) then
+						disallow[val] = true
 					end
-					prepare_objects(data, disallow)
-					disallow[data], disallow[val] = nil, nil
+					count_values(data, disallow)
+					disallow[val] = nil
 				end
+				count_values(typename, disallow)
+				object_order[#object_order+1] = val
 			end
 		elseif type_ == "table" then
 			if not count then
@@ -75,13 +77,14 @@ local function prepare_objects(value)
 					count_values(k, disallow)
 					count_values(v, disallow)
 				end
+				object_order[#object_order+1] = val
 			end
 		elseif type_ ~= "string" and type_ ~= "function" then
 			error("unsupported type: " .. type_)
 		end
 	end
 	count_values(value, {})
-	return counts, serialized, type_lookup
+	return counts, serialized, type_lookup, object_order
 end
 
 -- Build a "set" of Lua keywords. These can't be used as short key names.
@@ -113,7 +116,7 @@ local function serialize(value, write)
 	local references = {}
 	-- Circular tables that must be filled using `table[key] = value` statements
 	local to_fill = {}
-	local counts, serialized, typenames = prepare_objects(value)
+	local counts, serialized, typenames, object_order = prepare_objects(value)
 	if next(serialized) ~= nil then
 		write "local D = D or function(tbl) return tbl end;"
 	end
@@ -124,7 +127,8 @@ local function serialize(value, write)
 			if refnum == 1 then
 				write"local _={};" -- initialize reference table
 			end
-			local delay_assignment = serialized[object] ~= nil and serialized[object] ~= object
+			local ser = serialized[object]
+			local delay_assignment = ser ~= nil and not rawequal(ser, object)
 			if not delay_assignment then
 				write"_["
 				write(reference)
@@ -137,9 +141,9 @@ local function serialize(value, write)
 					write(quote(object))
 				end
 				write(";")
-				if type_ == "table" then
-					to_fill[object] = reference
-				end
+			end
+			if type_ ~= "string" then
+				to_fill[object] = reference
 			end
 			references[object] = reference
 			refnum = refnum + 1
@@ -231,35 +235,38 @@ local function serialize(value, write)
 		end
 	end
 	-- Write the statements to fill circular tables
-	for table, ref in pairs(to_fill) do
-		for k, v in pairs(table) do
-			write("_[")
-			write(ref)
-			write("]")
-			if use_short_key(k) then
-				write(".")
-				write(k)
-			else
-				write("[")
-				dump(k)
-				write("]")
+	for _, table in ipairs(object_order) do
+		local ref = to_fill[table]
+		if ref then
+			local ser = serialized[table]
+			if ser == nil or rawequal(ser, table) then
+				for k, v in pairs(table) do
+					write("_[")
+					write(ref)
+					write("]")
+					if use_short_key(k) then
+						write(".")
+						write(k)
+					else
+						write("[")
+						dump(k)
+						write("]")
+					end
+					write("=")
+					dump(v)
+					write(";")
+				end
 			end
-			write("=")
-			dump(v)
-			write(";")
-		end
-	end
-	for obj, data in pairs(serialized) do
-		local oref = references[obj]
-		local typename = typenames[obj]
-		if oref then
-			write("_[")
-			write(oref)
-			write("]=D(")
-			dump(data)
-			write(",")
-			dump(typename)
-			write(");")
+			if ser ~= nil then
+				local typename = typenames[table]
+				write("_[")
+				write(ref)
+				write("]=D(")
+				dump(ser)
+				write(",")
+				dump(typename)
+				write(");")
+			end
 		end
 	end
 	write("return ")
@@ -269,6 +276,10 @@ end
 function core.register_serializable(typename, mt, serialize, deserialize)
 	if not is_primitive_type(type(typename)) then
 		return error("typename may not be a referenced type")
+	elseif typename == nil then
+		return error("typename is nil")
+	elseif type(mt) ~= "table" then
+		return error("metatable is not a table")
 	elseif registered_mt_serialization[mt] then
 		return error("metatable already registered for serialization")
 	elseif registered_mt_deserialization[typename] then

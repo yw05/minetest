@@ -7055,6 +7055,27 @@ Misc.
     * Example: `deserialize('print("foo")')`, returns `nil`
       (function call fails), returns
       `error:[string "print("foo")"]:1: attempt to call global 'print' (a nil value)`
+* `minetest.register_serializable(name, mt[, serializer [,deserializer]])
+    * Register a metatable such that objects with the given metatable are
+      handledspecially in in the (de)serialization process.
+    * Objects with the metatable are passed to `serializer`, the result of which
+      is serialized. This is also passed to `deserializer` to (re)construct the
+      original object.
+    * `name` is a non-referenced object (i.e. string, number, boolean). It may
+      _not_ be nil.
+    * If `serializer` is not provided, the identity function is used.
+    * If `deserializer` is not provided, `function(obj) return setmetatable(obj, mt) end`
+      is used.
+    * `serializer` must return an object that can be serialized using `minetest.serialize`.
+    * If `serializer(obj)` is not `rawequal` to `obj`, then `serializer(obj)`
+      may not contain references to `obj`. However, `serializer(obj)` itself may
+      be a recursive data structure; note that references to `serializer(obj)`
+      are kept as-is after deserialization.
+    * `serializer(obj1)` may be `rawequal` to `serializer(obj2)` even when
+      `obj1` and `obj2` are not identical objects. However, in this case, there
+      is no guarantee as to whether the two objects are identical after
+      deserialization; in particular, there is no guarantee that the two objects
+      will _not_ be identical after deserialization.
 * `minetest.compress(data, method, ...)`: returns `compressed_data`
     * Compress a string of data.
     * `method` is a string identifying the compression method to be used.
