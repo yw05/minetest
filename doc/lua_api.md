@@ -7061,25 +7061,28 @@ Misc.
     * Objects with the metatable are passed to `serializer`, the result of which
       is serialized. This is also passed to `deserializer` to (re)construct the
       original object.
-    * `name` is a non-referenced object (i.e. string, number, boolean). It may
-      _not_ be nil.
-	* It is recommended to include the mod name as a prefix in `name`, such as
-	  `mymod:struct`, to avoid conflicting names. The `builtin:` prefix is
-	  indended for built-in data types and should not be used to name data
-	  types from mods.
-    * If `serializer` is not provided, the identity function is used.
-    * If `deserializer` is not provided, `function(obj) return setmetatable(obj, mt) end`
-      is used.
-    * `serializer` must return an object that can be serialized using `minetest.serialize`.
-    * If `serializer(obj)` is not `rawequal` to `obj`, then `serializer(obj)`
-      may not contain references to `obj`. However, `serializer(obj)` itself may
-      be a recursive data structure; note that references to `serializer(obj)`
-      are kept as-is after deserialization.
-    * `serializer(obj1)` may be `rawequal` to `serializer(obj2)` even when
-      `obj1` and `obj2` are not identical objects. However, in this case, there
-      is no guarantee as to whether the two objects are identical after
-      deserialization; in particular, there is no guarantee that the two objects
-      will _not_ be identical after deserialization.
+    * `name` is a string identifying the metatable
+        * It is recommended to include the mod name as a prefix in `name`, such
+          as `mymod:struct`, to avoid conflicting names. The `builtin:` prefix
+          is indended for built-in data types and should not be used to name
+          data types from mods.
+    * `mt` is the metatable to register.
+    * `serializer` is a function that converts an object with the metatable `mt`
+      to its serialized form, which is then written into the serialized data.
+        * If this is not provided, `function(x) return x end` is used.
+        * `serializer` must return an object that can be serialized using `minetest.serialize`.
+        * If `serializer(obj)` is not `rawequal` to `obj`, then `serializer(obj)`
+          may not contain references to `obj`.
+        * `serializer(obj)` itself may be a recursive data structure. However,
+          references to `serializer(obj)` are kept as-is after deserialization.
+        * `serializer(obj1)` may be `rawequal` to `serializer(obj2)` even when
+          `obj1` and `obj2` are not identical objects. However, in this case,
+          there is no guarantee as to whether the `obj1` and `obj2` remain
+          distinct objects after deserialization.
+    * `deserializer` is a function that converts a serialized form (described
+      above) to an object with `mt` as its metatable.
+        * If `deserializer` is not provided, `function(obj) return setmetatable(obj, mt) end`
+          is used.
 * `minetest.compress(data, method, ...)`: returns `compressed_data`
     * Compress a string of data.
     * `method` is a string identifying the compression method to be used.
