@@ -7057,14 +7057,14 @@ Misc.
       `error:[string "print("foo")"]:1: attempt to call global 'print' (a nil value)`
 * `minetest.register_serializable(name, mt[, serializer [,deserializer]])
     * Register a metatable such that objects with the given metatable are
-      handledspecially in in the (de)serialization process.
+      handled specially in in the (de)serialization process.
     * Objects with the metatable are passed to `serializer`, the result of which
       is serialized. This is also passed to `deserializer` to (re)construct the
       original object.
     * `name` is a non-referenced object (i.e. string, number, boolean). It may
       _not_ be nil.
 	* It is recommended to include the mod name as a prefix in `name`, such as
-	  `mymod:struct`, to aovid conflicting names. The `builtin:` prefix is
+	  `mymod:struct`, to avoid conflicting names. The `builtin:` prefix is
 	  indended for built-in data types and should not be used to name data
 	  types from mods.
     * If `serializer` is not provided, the identity function is used.
