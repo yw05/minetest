@@ -274,15 +274,10 @@ local function serialize(value, write)
 end
 
 function core.register_serializable(typename, mt, serialize, deserialize)
-	if type(typename) ~= "string" then
-		return error(("attempt to use %s value as metatable name"):format(type(typename)))
-	elseif type(mt) ~= "table" then
-		return error(("attempt to register a %s value as metatable"):format(type(mt)))
-	elseif registered_mt_serialization[mt] then
-		return error("metatable already registered for serialization")
-	elseif registered_mt_deserialization[typename] then
-		return error(("%s already registered as serializable"):format(typename))
-	end
+	assert(type(typename) == "string", ("attempt to use %s value as metatable name"):format(type(typename)))
+	assert(type(mt) == "table", ("attempt to register a %s value as metatable"):format(type(mt)))
+	assert(not registered_mt_serialization[mt], "metatable already registered for serialization")
+	assert(not registered_mt_deserialization[typename], ("%s already registered as serializable"):format(typename))
 	if type(serialize) ~= "function" then
 		serialize = function(tbl)
 			return tbl
