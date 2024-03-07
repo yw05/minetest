@@ -109,10 +109,10 @@ local function serialize(value, write)
 				write(dump_itemstack(object))
 			end
 			write(";")
+			references[object] = reference
 			if type_ ~= "string" and not is_itemstack(object) then
 				to_fill[object] = reference
 			end
-			references[object] = reference
 			refnum = refnum + 1
 			reference = ("%d"):format(refnum)
 		end
