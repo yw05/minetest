@@ -22,10 +22,9 @@ end
 local function prepare_objects(value)
 	local counts = {}
 	local type_lookup = {}
-	local object_order = {}
 	if value == nil then
 		-- Early return for nil; tables can't contain nil
-		return counts, type_lookup, object_order
+		return counts, type_lookup
 	end
 	local function count_values(val)
 		local type_ = type(val)
@@ -41,7 +40,6 @@ local function prepare_objects(value)
 					count_values(k)
 					count_values(v)
 				end
-				object_order[#object_order+1] = val
 				if mt then
 					type_lookup[val] = core.known_metatables[mt]
 				end
@@ -51,7 +49,7 @@ local function prepare_objects(value)
 		end
 	end
 	count_values(value, {})
-	return counts, type_lookup, object_order
+	return counts, type_lookup
 end
 
 -- Build a "set" of Lua keywords. These can't be used as short key names.
@@ -87,7 +85,7 @@ local function serialize(value, write)
 	local references = {}
 	-- Circular tables that must be filled using `table[key] = value` statements
 	local to_fill = {}
-	local counts, typenames, object_order = prepare_objects(value)
+	local counts, typenames = prepare_objects(value)
 	if next(typenames) then
 		write "if not setmetatable then core={known_metatables={}}; setmetatable = function(x) return x end; end;"
 	end
@@ -206,33 +204,30 @@ local function serialize(value, write)
 		end
 	end
 	-- Write the statements to fill circular tables
-	for _, table in ipairs(object_order) do
-		local ref = to_fill[table]
-		if ref then
-			local typename = typenames[table]
-			for k, v in pairs(table) do
-				write("_[")
-				write(ref)
+	for table, ref in pairs(to_fill) do
+		local typename = typenames[table]
+		for k, v in pairs(table) do
+			write("_[")
+			write(ref)
+			write("]")
+			if use_short_key(k) then
+				write(".")
+				write(k)
+			else
+				write("[")
+				dump(k)
 				write("]")
-				if use_short_key(k) then
-					write(".")
-					write(k)
-				else
-					write("[")
-					dump(k)
-					write("]")
-				end
-				write("=")
-				dump(v)
-				write(";")
 			end
-			if typename then
-				write("setmetatable(_[")
-				write(ref)
-				write("],core.known_metatables[")
-				dump(typename)
-				write("] or {})")
-			end
+			write("=")
+			dump(v)
+			write(";")
+		end
+		if typename then
+			write("setmetatable(_[")
+			write(ref)
+			write("],core.known_metatables[")
+			dump(typename)
+			write("] or {})")
 		end
 	end
 	write("return ")
