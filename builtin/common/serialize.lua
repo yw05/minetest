@@ -8,83 +8,50 @@ local next, rawget, pairs, pcall, error, type, setfenv, loadstring
 local table_concat, string_dump, string_format, string_match, math_huge
 	= table.concat, string.dump, string.format, string.match, math.huge
 
-local registered_mt_serialization = {}
-local registered_mt_deserialization = {}
-
-local primitive_types = {
-	boolean = true,
-	number = true,
-	string = true,
-	["nil"] = true,
-}
-local function is_primitive_type(typename)
-	return primitive_types[typename] or false
+local itemstack_mt
+if ItemStack then
+	itemstack_mt = getmetatable(ItemStack())
+end
+local function is_itemstack(x)
+	return itemstack_mt and getmetatable(x) == itemstack_mt
 end
 
 -- Recursively
--- (1) prepares objects with custom metatables for serialization;
+-- (1) reads metatables from tables;
 -- (2) counts occurrences of objects (non-primitives including strings) in a table.
 local function prepare_objects(value)
 	local counts = {}
-	local serialized = {}
 	local type_lookup = {}
 	local object_order = {}
 	if value == nil then
 		-- Early return for nil; tables can't contain nil
-		return counts, serialized, type_lookup, object_order
+		return counts, type_lookup, object_order
 	end
-	local function count_values(val, disallow)
+	local function count_values(val)
 		local type_ = type(val)
-		if disallow[val] then
-			error("unsupported recursive data structure")
-		end
 		if type_ == "boolean" or type_ == "number" then
 			return
 		end
 		local count = counts[val]
 		counts[val] = (count or 0) + 1
 		local mt = getmetatable(val)
-		if mt and registered_mt_serialization[mt] then
-			if not count then
-				local data, typename = registered_mt_serialization[mt](val)
-				serialized[val] = data
-				type_lookup[val] = typename
-				if disallow[data] then
-					error("unsupported recursive data structure")
-				end
-				if rawequal(data, val) then
-					if type_ == "table" then
-						for k, v in pairs(val) do
-							count_values(k, disallow)
-							count_values(v, disallow)
-						end
-					elseif not is_primitive_type(type_) then
-						error(("serialization of %s resulted in unsupported type: %s"):format(typename, type_))
-					end
-				else
-					if not is_primitive_type(type(val)) then
-						disallow[val] = true
-					end
-					count_values(data, disallow)
-					disallow[val] = nil
-				end
-				count_values(typename, disallow)
-				object_order[#object_order+1] = val
-			end
-		elseif type_ == "table" then
+		if type_ == "table" then
 			if not count then
 				for k, v in pairs(val) do
-					count_values(k, disallow)
-					count_values(v, disallow)
+					count_values(k)
+					count_values(v)
 				end
 				object_order[#object_order+1] = val
+				if mt then
+					type_lookup[val] = core.known_metatables[mt]
+				end
 			end
-		elseif type_ ~= "string" and type_ ~= "function" then
+		elseif type_ ~= "string" and type_ ~= "function" and not is_itemstack(val) then
 			error("unsupported type: " .. type_)
 		end
 	end
 	count_values(value, {})
-	return counts, serialized, type_lookup, object_order
+	return counts, type_lookup, object_order
 end
 
 -- Build a "set" of Lua keywords. These can't be used as short key names.
@@ -108,6 +75,10 @@ local function dump_func(func)
 	return string_format("loadstring(%q)", string_dump(func))
 end
 
+local function dump_itemstack(item)
+	return string_format("ItemStack(%q)", item:to_string())
+end
+
 -- Serializes Lua nil, booleans, numbers, strings, tables and even functions
 -- Tables are referenced by reference, strings are referenced by value. Supports circular tables.
 local function serialize(value, write)
@@ -116,9 +87,9 @@ local function serialize(value, write)
 	local references = {}
 	-- Circular tables that must be filled using `table[key] = value` statements
 	local to_fill = {}
-	local counts, serialized, typenames, object_order = prepare_objects(value)
-	if next(serialized) ~= nil then
-		write "local D = D or function(tbl) return tbl end;"
+	local counts, typenames, object_order = prepare_objects(value)
+	if next(typenames) then
+		write "if not setmetatable then core={known_metatables={}}; setmetatable = function(x) return x end; end;"
 	end
 	for object, count in pairs(counts) do
 		local type_ = type(object)
@@ -127,22 +98,20 @@ local function serialize(value, write)
 			if refnum == 1 then
 				write"local _={};" -- initialize reference table
 			end
-			local ser = serialized[object]
-			local delay_assignment = ser ~= nil and not rawequal(ser, object)
-			if not delay_assignment then
-				write"_["
-				write(reference)
-				write("]=")
-				if type_ == "table" then
-					write("{}")
-				elseif type_ == "function" then
-					write(dump_func(object))
-				elseif type_ == "string" then
-					write(quote(object))
-				end
-				write(";")
+			write"_["
+			write(reference)
+			write("]=")
+			if type_ == "table" then
+				write("{}")
+			elseif type_ == "function" then
+				write(dump_func(object))
+			elseif type_ == "string" then
+				write(quote(object))
+			elseif is_itemstack(object) then
+				write(dump_itemstack(object))
 			end
-			if type_ ~= "string" then
+			write(";")
+			if type_ ~= "string" and not is_itemstack(object) then
 				to_fill[object] = reference
 			end
 			references[object] = reference
@@ -184,13 +153,12 @@ local function serialize(value, write)
 			write(ref)
 			return write"]"
 		end
-		if (not skip_mt) and serialized[value] then
-			local data = serialized[value]
-			write "D("
-			dump(serialized[value], rawequal(data, value))
-			write ","
+		if (not skip_mt) and typenames[value] then
+			write "setmetatable("
+			dump(value, true)
+			write ",core.known_metatables["
 			dump(typenames[value])
-			write ")"
+			write "] or {})"
 			return
 		end
 		if type_ == "string" then
@@ -198,6 +166,9 @@ local function serialize(value, write)
 		end
 		if type_ == "function" then
 			return write(dump_func(value))
+		end
+		if is_itemstack(value) then
+			return write(dump_itemstack(value))
 		end
 		if type_ == "table" then
 			write("{")
@@ -238,60 +209,34 @@ local function serialize(value, write)
 	for _, table in ipairs(object_order) do
 		local ref = to_fill[table]
 		if ref then
-			local ser = serialized[table]
-			if ser == nil or rawequal(ser, table) then
-				for k, v in pairs(table) do
-					write("_[")
-					write(ref)
-					write("]")
-					if use_short_key(k) then
-						write(".")
-						write(k)
-					else
-						write("[")
-						dump(k)
-						write("]")
-					end
-					write("=")
-					dump(v)
-					write(";")
-				end
-			end
-			if ser ~= nil then
-				local typename = typenames[table]
+			local typename = typenames[table]
+			for k, v in pairs(table) do
 				write("_[")
 				write(ref)
-				write("]=D(")
-				dump(ser)
-				write(",")
+				write("]")
+				if use_short_key(k) then
+					write(".")
+					write(k)
+				else
+					write("[")
+					dump(k)
+					write("]")
+				end
+				write("=")
+				dump(v)
+				write(";")
+			end
+			if typename then
+				write("setmetatable(_[")
+				write(ref)
+				write("],core.known_metatables[")
 				dump(typename)
-				write(");")
+				write("] or {})")
 			end
 		end
 	end
 	write("return ")
 	dump(value)
-end
-
-function core.register_serializable(typename, mt, serialize, deserialize)
-	assert(type(typename) == "string", ("attempt to use %s value as metatable name"):format(type(typename)))
-	assert(type(mt) == "table", ("attempt to register a %s value as metatable"):format(type(mt)))
-	assert(not registered_mt_serialization[mt], "metatable already registered for serialization")
-	assert(not registered_mt_deserialization[typename], ("%s already registered as serializable"):format(typename))
-	if type(serialize) ~= "function" then
-		serialize = function(tbl)
-			return tbl
-		end
-	end
-	if type(deserialize) ~= "function" then
-		deserialize = function(tbl)
-			return setmetatable(tbl, mt)
-		end
-	end
-	registered_mt_serialization[mt] = function(tbl)
-		return serialize(tbl), typename
-	end
-	registered_mt_deserialization[typename] = deserialize
 end
 
 function core.serialize(value)
@@ -304,14 +249,6 @@ function core.serialize(value)
 end
 
 local function dummy_func() end
-
-local function deserialize_object(obj, typename)
-	local d = registered_mt_deserialization[typename]
-	if d then
-		return d(obj)
-	end
-	return obj
-end
 
 function core.deserialize(str, safe)
 	-- Backwards compatibility
@@ -328,7 +265,13 @@ function core.deserialize(str, safe)
 	if not func then return nil, err end
 
 	-- math.huge was serialized to inf and NaNs to nan by Lua in Minetest 5.6, so we have to support this here
-	local env = {inf = math_huge, nan = 0/0, D = deserialize_object}
+	local env = {
+		inf = math_huge,
+		nan = 0/0,
+		ItemStack = ItemStack or function(str) return str end,
+		setmetatable = setmetatable,
+		core = { known_metatables = core.known_metatables }
+	}
 	if safe then
 		env.loadstring = dummy_func
 	else
@@ -349,7 +292,3 @@ function core.deserialize(str, safe)
 	return nil, value_or_err
 end
 
-if ItemStack then
-	local empty_stack = ItemStack()
-	core.register_serializable("__builtin:itemstack", getmetatable(empty_stack), empty_stack.to_string, ItemStack)
-end

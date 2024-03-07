@@ -6602,6 +6602,10 @@ Arguments and return values passed through this can contain certain userdata
 objects that will be seamlessly copied (not shared) to the async environment.
 This allows you easy interoperability for delegating work to jobs.
 
+Metatables are not kept across environments by default. Use `core.register_metatable`
+if you want a metatable to be kept. Note that you need to register the metatable
+in the main environment and in the async environment.
+
 * `minetest.handle_async(func, callback, ...)`:
     * Queue the function `func` to be ran in an async environment.
       Note that there are multiple persistent workers and any of them may
@@ -6614,17 +6618,6 @@ This allows you easy interoperability for delegating work to jobs.
     * Register a path to a Lua file to be imported when an async environment
       is initialized. You can use this to preload code which you can then call
       later using `minetest.handle_async()`.
-* `minetest.register_async_metatable(name, mt)`:
-    * Register a metatable that should be preserved when data is transferred
-    between the main thread and the async environment.
-    * `name` is a string that identifies the metatable. It is recommended to
-      follow the `modname:name` convention for this identifier.
-    * `mt` is the metatable to register.
-    * Note that it is allowed to register the same metatable under multiple
-      names, but it is not allowed to register multiple metatables under the
-      same name.
-    * You must register the metatable in both the main environment
-      and the async environment for this mechanism to work.
 
 
 ### List of APIs available in an async environment
@@ -6651,7 +6644,7 @@ Class instances that can be transferred between environments:
 Functions:
 * Standalone helpers such as logging, filesystem, encoding,
   hashing or compression APIs
-* `minetest.register_async_metatable` (see above)
+* `minetest.register_metatable` (see above)
 
 Variables:
 * `minetest.settings`
@@ -7055,34 +7048,19 @@ Misc.
     * Example: `deserialize('print("foo")')`, returns `nil`
       (function call fails), returns
       `error:[string "print("foo")"]:1: attempt to call global 'print' (a nil value)`
-* `minetest.register_serializable(name, mt[, serializer [,deserializer]])
-    * Register a metatable such that objects with the given metatable are
-      handled specially in in the (de)serialization process.
-    * Objects with the metatable are passed to `serializer`, the result of which
-      is serialized. This is also passed to `deserializer` to (re)construct the
-      original object.
-    * `name` is a string identifying the metatable
-        * It is recommended to include the mod name as a prefix in `name`, such
-          as `mymod:struct`, to avoid conflicting names. The `builtin:` prefix
-          is indended for built-in data types and should not be used to name
-          data types from mods.
+* `minetest.register_metatable(name, mt)`:
+    * Register a metatable that should be preserved when data is transferred
+    across Lua environments, such as between the main and async environments
+    or for `minetest.serialize`.
+    * `name` is a string that identifies the metatable. It is recommended to
+      follow the `modname:name` convention for this identifier.
     * `mt` is the metatable to register.
-    * `serializer` is a function that converts an object with the metatable `mt`
-      to its serialized form, which is then written into the serialized data.
-        * If this is not provided, `function(x) return x end` is used.
-        * `serializer` must return an object that can be serialized using `minetest.serialize`.
-        * If `serializer(obj)` is not `rawequal` to `obj`, then `serializer(obj)`
-          may not contain references to `obj`.
-        * `serializer(obj)` itself may be a recursive data structure. However,
-          references to `serializer(obj)` are kept as-is after deserialization.
-        * `serializer(obj1)` may be `rawequal` to `serializer(obj2)` even when
-          `obj1` and `obj2` are not identical objects. However, in this case,
-          there is no guarantee as to whether the `obj1` and `obj2` remain
-          distinct objects after deserialization.
-    * `deserializer` is a function that converts a serialized form (described
-      above) to an object with `mt` as its metatable.
-        * If `deserializer` is not provided, `function(obj) return setmetatable(obj, mt) end`
-          is used.
+    * Note that it is allowed to register the same metatable under multiple
+      names, but it is not allowed to register multiple metatables under the
+      same name.
+    * If you intend to use this for the async environment, you must register the
+      metatable in both the main environment and the async environment for this
+      mechanism to work.
 * `minetest.compress(data, method, ...)`: returns `compressed_data`
     * Compress a string of data.
     * `method` is a string identifying the compression method to be used.
