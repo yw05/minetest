@@ -129,6 +129,8 @@ EM_BOOL CIrrDeviceSDL::MouseLeaveCallback(int eventType, const EmscriptenMouseEv
 }
 #endif
 
+#define HAS_PHYSICAL_KEY(x) (SDL_GetScancodeFromKey(x) != SDL_SCANCODE_UNKNOWN)
+
 bool CIrrDeviceSDL::keyIsKnownSpecial(EKEY_CODE irrlichtKey)
 {
 	switch (irrlichtKey) {
@@ -883,7 +885,7 @@ bool CIrrDeviceSDL::run()
 			// This is a GIANT HACK to fix the most common case of
 			// https://github.com/minetest/minetest/issues/14545 for the 5.9.0 release.
 			if (irrevent.KeyInput.Key == KEY_KEY_7 && irrevent.KeyInput.Shift &&
-					SDL_GetScancodeFromKey(SDLK_SLASH) == SDL_SCANCODE_UNKNOWN)
+					!HAS_PHYSICAL_KEY(SDLK_SLASH))
 				irrevent.KeyInput.Char = L'/';
 
 			postEventFromUser(irrevent);
