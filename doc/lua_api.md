@@ -4172,29 +4172,14 @@ Helper functions
 Translations
 ============
 
-Texts can be translated client-side with the help of `core.translate` and
-translation files.
+Texts can be translated client-side with the help of `core.translate`, `core.translate_n`,
+and translation files.
 
 Translating a string
 --------------------
 
-Two functions are provided to translate strings: `core.translate` and
-`core.get_translator`.
-
-* `core.get_translator(textdomain)` is a simple wrapper around
-  `core.translate` and `core.translate_n`.
-  After `local S, PS = core.get_translator(textdomain)`, we have
-  `S(str, ...)` equivalent to `core.translate(textdomain, str, ...)`, and
-  `PS(str, str_plural, n, ...)` to `core.translate_n(textdomain, str, str_plural, n, ...)`.
-  It is intended to be used in the following way, so that it avoids verbose
-  repetitions of `core.translate`:
-
-  ```lua
-  local S, PS = core.get_translator(textdomain)
-  S(str, ...)
-  ```
-
-  As an extra commodity, if `textdomain` is nil, it is assumed to be "" instead.
+These functions are provided to translate strings: `core.translate`, `core.translate_n`,
+and `core.get_translator`.
 
 * `core.translate(textdomain, str, ...)` translates the string `str` with
   the given `textdomain` for disambiguation. The textdomain must match the
@@ -4218,6 +4203,34 @@ Two functions are provided to translate strings: `core.translate` and
   for more details on the differences of plurals between languages.
 
   Also note that plurals are only handled in .po or .mo files, and not in .tr files.
+
+* `core.get_translator(textdomain)` is a simple wrapper around
+  `core.translate` and `core.translate_n`.
+  After `local S, PS = core.get_translator(textdomain)`, we have
+  `S(str, ...)` equivalent to `core.translate(textdomain, str, ...)`, and
+  `PS(str, str_plural, n, ...)` to `core.translate_n(textdomain, str, str_plural, n, ...)`.
+  It is intended to be used in the following way, so that it avoids verbose
+  repetitions of `core.translate`:
+
+  ```lua
+  local S, PS = core.get_translator(textdomain)
+  S(str, ...)
+  ```
+
+  As an extra commodity, if `textdomain` is nil, it is assumed to be "" instead.
+
+  It is a convention to use `S` and `PS` as shown above. The following convention can also
+  be seen:
+
+  * `FS` and `PFS` are used for `core.formspec_escape(S(...))` and `core.formspec_escape(PS(...))`,
+    respectively;
+  * `NS` are used for strings that are not translated in-place but used in combination with `S`
+    later. This allows translatable strings to be collected by `xgettext` even if they are passed
+    to `S` as (for example) variables. `NFS` is used for `core.formspec_escape(NS(...))`.
+
+  Note that `FS`, `PFS`, `NS`, and `NFS` need to be manually defined. Refer to
+  https://github.com/minetest/modtools/blob/main/doc/mod_translation_updater.md for further
+  information on such conventions.
 
 For instance, suppose we want to greet players when they join and provide a
 command that shows the amount of time since the player joined. We can do the
@@ -4277,7 +4290,7 @@ code.
 It is recommended to first generate a translation template. The translation
 template includes translatable strings that translators can directly work on.
 After creating the `locale` directory, a translation template for the above
-example using the following command:
+example can be created using the following command:
 
 ```sh
 xgettext -L lua -kS -kPS:1,2 -kcore.translate:1c,2 -kcore.translate_n:1c,2,3 \
@@ -4286,6 +4299,12 @@ xgettext -L lua -kS -kPS:1,2 -kcore.translate:1c,2 -kcore.translate_n:1c,2,3 \
 
 The above command can also be used to update the translation template when new
 translatable strings are added.
+
+Note that the above command only covers `S`, `PS`, `core.translate`, and
+`core.translate_n`. If you use other functions (such as `FS`) for translations,
+you also need to define these using the `-k` parameter of `xgettext`. Refer to
+https://www.gnu.org/software/gettext/manual/html_node/xgettext-Invocation.html
+for further information.
 
 The German translator can then create the translation file with
 
