@@ -19,7 +19,6 @@
 #include <cstdio>
 #include <cstdlib>
 #include <unordered_map>
-#include <unordered_set>
 #include "SIrrCreationParameters.h"
 #include <SDL_video.h>
 
@@ -29,12 +28,19 @@
 
 #include "CSDLManager.h"
 
-// Since SDL doesn't have mouse keys as keycodes we fall back to EKEY_CODE
-static const std::unordered_set<irr::EKEY_CODE> fake_keys = {
-	irr::KEY_LBUTTON, irr::KEY_MBUTTON, irr::KEY_RBUTTON, irr::KEY_XBUTTON1, irr::KEY_XBUTTON2
-};
+// Since SDL doesn't have mouse keys as keycodes we need to fall back to EKEY_CODE in some cases.
 static inline bool is_fake_key(irr::EKEY_CODE key) {
-	return fake_keys.find(key) != fake_keys.end();
+	switch (key) {
+	case irr::KEY_LBUTTON:
+	case irr::KEY_MBUTTON:
+	case irr::KEY_RBUTTON:
+	case irr::KEY_XBUTTON1:
+	case irr::KEY_XBUTTON2:
+		return true;
+
+	default:
+		return false;
+	}
 }
 
 static int SDLDeviceInstances = 0;
@@ -233,7 +239,7 @@ int CIrrDeviceSDL::findCharToPassToIrrlicht(uint32_t sdlKey, EKEY_CODE irrlichtK
 // Irrlicht has some EKEY_CODE entries that only appear to make sense in a SDL-scancode-like context.
 // These keycodes are passed by (in particular) the X11 IrrlichtDevice.
 // Perform one-way conversion if we encounter them.
-std::unordered_map<EKEY_CODE, SDL_Scancode> ekey_scancodes = {
+static const std::unordered_map<EKEY_CODE, SDL_Scancode> ekey_scancodes = {
 	{KEY_OEM_1, SDL_SCANCODE_SEMICOLON},
 	{KEY_OEM_2, SDL_SCANCODE_SLASH},
 	{KEY_OEM_3, SDL_SCANCODE_GRAVE},
