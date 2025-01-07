@@ -28,13 +28,10 @@ public:
 	irr::EKEY_CODE getKeycode() const;
 	wchar_t getKeychar() const;
 
-	//TODO: drop this once we fully switch to SDL
 	u32 getScancode() const
 	{
-#if USE_SDL2
 		if (auto pv = std::get_if<u32>(&scancode))
 			return *pv;
-#endif
 		return 0;
 	}
 
