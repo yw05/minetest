@@ -344,7 +344,6 @@ public:
 		return video::isDriverSupported(driver);
 	}
 
-#if defined(_IRR_COMPILE_WITH_SDL_DEVICE_) || USE_SDL2
 	//! Get the scancode of the corresponding keycode.
 	virtual std::variant<u32, EKEY_CODE> getScancodeFromKey(const Keycode &key) const {
 		if (auto pv = std::get_if<EKEY_CODE>(&key))
@@ -356,7 +355,6 @@ public:
 	virtual Keycode getKeyFromScancode(const u32 scancode) const {
 		return Keycode(KEY_UNKNOWN, (wchar_t)scancode);
 	}
-#endif
 };
 
 } // end namespace irr
