@@ -35,7 +35,7 @@ void migrate_settings()
 	if (!g_settings->existsLocal("save_keys_as_scancodes"))
 		for (const auto &name: g_settings->getNames())
 			if (auto value = g_settings->get(name);
-					str_starts_with(name, "keymap_") && value.size() > 1 && value.front() != '<') {
+					str_starts_with(name, "keymap_") && !str_starts_with(value, "<")) {
 				g_settings->setBool("save_keys_as_scancodes", false);
 				set_keyboard_defaults(g_settings, true);
 				break;
