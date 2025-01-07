@@ -324,7 +324,7 @@ private:
 
 	core::rect<s32> lastElemPos;
 
-	std::unordered_map<s32, EKEY_CODE> KeyMap;
+	std::unordered_map<SDL_Keycode, EKEY_CODE> KeyMap;
 	SDL_SysWMinfo Info;
 
 	s32 CurrentTouchCount;

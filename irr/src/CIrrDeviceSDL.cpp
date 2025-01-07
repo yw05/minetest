@@ -256,10 +256,13 @@ std::variant<u32, EKEY_CODE> CIrrDeviceSDL::getScancodeFromKey(const Keycode &ke
 {
 	u32 keynum = 0;
 	if (const auto *keycode = std::get_if<EKEY_CODE>(&key)) {
+		// Fake keys (e.g. mouse buttons): use EKEY_CODE since there is no corresponding scancode.
 		if (is_fake_key(*keycode))
 			return *keycode;
+		// OEM_x keys can be converted to scancodes directly without involving SDL.
 		if (const auto &ent = ekey_scancodes.find(*keycode); ent != ekey_scancodes.end())
 			return ent->second;
+		// Try to convert the EKEY_CODE to a SDL scancode.
 		for (const auto &entry: KeyMap) {
 			if (entry.second == *keycode) {
 				keynum = entry.first;
