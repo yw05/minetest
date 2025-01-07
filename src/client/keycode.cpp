@@ -16,7 +16,7 @@ struct table_key {
 	std::string Name;
 	irr::EKEY_CODE Key;
 	wchar_t Char; // L'\0' means no character assigned
-	std::string LangName; // NULL means it doesn't have a human description
+	std::string LangName; // empty string means it doesn't have a human description
 };
 
 #define DEFINEKEY1(x, lang) /* Irrlicht key without character */ \
@@ -238,6 +238,7 @@ static const table_key &lookup_keychar(wchar_t Char)
 			return table_key;
 	}
 
+	// Create a new entry in the lookup table if one is not available.
 	auto newsym = wide_to_utf8(std::wstring_view(&Char, 1));
 	table_key new_key {newsym, irr::KEY_KEY_CODES_COUNT, Char, newsym};
 	return table.emplace_back(std::move(new_key));
