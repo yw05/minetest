@@ -210,6 +210,10 @@ public:
 	bool setFlagStr(const std::string &name, u32 flags,
 		const FlagDesc *flagdesc = nullptr, u32 flagmask = U32_MAX);
 	bool setNoiseParams(const std::string &name, const NoiseParams &np);
+	bool setIfMissing(const std::string &name, const std::string &value)
+	{
+		return !existsLocal(name) && set(name, value);
+	}
 
 	// remove a setting
 	bool remove(const std::string &name);

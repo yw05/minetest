@@ -11,3 +11,9 @@ class Settings;
  * @param settings pointer to settings
  */
 void set_default_settings();
+
+/**
+ * Use default preset for settings
+ * @param settings pointer to settings
+ */
+void set_keyboard_defaults(Settings *settings);

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: LGPL-2.1-or-later
 // Copyright (C) 2013 celeron55, Perttu Ahola <celeron55@gmail.com>
 
-#include "settings.h"
+#include "defaultsettings.h"
 #include "porting.h"
 #include "filesys.h"
 #include "config.h"
@@ -82,7 +82,6 @@ void set_default_settings()
 
 	// Client
 	settings->setDefault("address", "");
-	settings->setDefault("remote_port", "30000");
 	settings->setDefault("enable_sound", "true");
 #if defined(__unix__) && !defined(__APPLE__) && !defined (__ANDROID__)
 	// On Linux+X11 (not Linux+Wayland or Linux+XWayland), I've encountered a bug
@@ -130,138 +129,8 @@ void set_default_settings()
 	settings->setDefault("chat_weblink_color", "#8888FF");
 
 	// Keymap
-#if USE_SDL2
-	settings->setDefault("save_keys_as_scancodes", "true");
-	settings->setDefault("keymap_forward", "<26>");
-	settings->setDefault("keymap_autoforward", "");
-	settings->setDefault("keymap_backward", "<22>");
-	settings->setDefault("keymap_left", "<4>");
-	settings->setDefault("keymap_right", "<7>");
-	settings->setDefault("keymap_jump", "<44>");
-	settings->setDefault("keymap_sneak", "KEY_LSHIFT");
-	settings->setDefault("keymap_dig", "KEY_LBUTTON");
-	settings->setDefault("keymap_place", "KEY_RBUTTON");
-	settings->setDefault("keymap_drop", "<20>");
-	settings->setDefault("keymap_zoom", "<29>");
-	settings->setDefault("keymap_inventory", "<12>");
-	settings->setDefault("keymap_aux1", "<8>");
-	settings->setDefault("keymap_chat", "<23>");
-	settings->setDefault("keymap_cmd", "<56>");
-	settings->setDefault("keymap_cmd_local", "<55>");
-	settings->setDefault("keymap_minimap", "<25>");
-	settings->setDefault("keymap_console", "KEY_F10");
-
-	// See https://github.com/minetest/minetest/issues/12792
-	settings->setDefault("keymap_rangeselect", has_touch ? "<21>" : "");
-
-	settings->setDefault("keymap_freemove", "<14>");
-	settings->setDefault("keymap_pitchmove", "");
-	settings->setDefault("keymap_fastmove", "<13>");
-	settings->setDefault("keymap_noclip", "<11>");
-	settings->setDefault("keymap_hotbar_next", "<17>");
-	settings->setDefault("keymap_hotbar_previous", "<5>");
-	settings->setDefault("keymap_mute", "<16>");
-	settings->setDefault("keymap_camera_mode", "<6>");
-	settings->setDefault("keymap_increase_viewing_range_min", "<46>");
-	settings->setDefault("keymap_decrease_viewing_range_min", "<45>");
-#else
-	// TODO: Remove this once we fully switch to SDL2
-	settings->setDefault("save_keys_as_scancodes", "false");
-	settings->setDefault("keymap_forward", "KEY_KEY_W");
-	settings->setDefault("keymap_autoforward", "");
-	settings->setDefault("keymap_backward", "KEY_KEY_S");
-	settings->setDefault("keymap_left", "KEY_KEY_A");
-	settings->setDefault("keymap_right", "KEY_KEY_D");
-	settings->setDefault("keymap_jump", "KEY_SPACE");
-	settings->setDefault("keymap_sneak", "KEY_LSHIFT");
-	settings->setDefault("keymap_dig", "KEY_LBUTTON");
-	settings->setDefault("keymap_place", "KEY_RBUTTON");
-	settings->setDefault("keymap_drop", "KEY_KEY_Q");
-	settings->setDefault("keymap_zoom", "KEY_KEY_Z");
-	settings->setDefault("keymap_inventory", "KEY_KEY_I");
-	settings->setDefault("keymap_aux1", "KEY_KEY_E");
-	settings->setDefault("keymap_chat", "KEY_KEY_T");
-	settings->setDefault("keymap_cmd", "/");
-	settings->setDefault("keymap_cmd_local", ".");
-	settings->setDefault("keymap_minimap", "KEY_KEY_V");
-	settings->setDefault("keymap_console", "KEY_F10");
-
-	// See https://github.com/minetest/minetest/issues/12792
-	settings->setDefault("keymap_rangeselect", has_touch ? "KEY_KEY_R" : "");
-
-	settings->setDefault("keymap_freemove", "KEY_KEY_K");
-	settings->setDefault("keymap_pitchmove", "");
-	settings->setDefault("keymap_fastmove", "KEY_KEY_J");
-	settings->setDefault("keymap_noclip", "KEY_KEY_H");
-	settings->setDefault("keymap_hotbar_next", "KEY_KEY_N");
-	settings->setDefault("keymap_hotbar_previous", "KEY_KEY_B");
-	settings->setDefault("keymap_mute", "KEY_KEY_M");
-	settings->setDefault("keymap_camera_mode", "KEY_KEY_C");
-	settings->setDefault("keymap_increase_viewing_range_min", "+");
-	settings->setDefault("keymap_decrease_viewing_range_min", "-");
-#endif
-
-	settings->setDefault("keymap_increase_volume", "");
-	settings->setDefault("keymap_decrease_volume", "");
-	settings->setDefault("keymap_cinematic", "");
-	settings->setDefault("keymap_toggle_block_bounds", "");
-	settings->setDefault("keymap_toggle_hud", "KEY_F1");
-	settings->setDefault("keymap_toggle_chat", "KEY_F2");
-	settings->setDefault("keymap_toggle_fog", "KEY_F3");
-#ifndef NDEBUG
-	settings->setDefault("keymap_toggle_update_camera", "KEY_F4");
-#else
-	settings->setDefault("keymap_toggle_update_camera", "");
-#endif
-	settings->setDefault("keymap_toggle_debug", "KEY_F5");
-	settings->setDefault("keymap_toggle_profiler", "KEY_F6");
-	settings->setDefault("keymap_screenshot", "KEY_F12");
-	settings->setDefault("keymap_fullscreen", "KEY_F11");
-	settings->setDefault("keymap_slot1", "KEY_KEY_1");
-	settings->setDefault("keymap_slot2", "KEY_KEY_2");
-	settings->setDefault("keymap_slot3", "KEY_KEY_3");
-	settings->setDefault("keymap_slot4", "KEY_KEY_4");
-	settings->setDefault("keymap_slot5", "KEY_KEY_5");
-	settings->setDefault("keymap_slot6", "KEY_KEY_6");
-	settings->setDefault("keymap_slot7", "KEY_KEY_7");
-	settings->setDefault("keymap_slot8", "KEY_KEY_8");
-	settings->setDefault("keymap_slot9", "KEY_KEY_9");
-	settings->setDefault("keymap_slot10", "KEY_KEY_0");
-	settings->setDefault("keymap_slot11", "");
-	settings->setDefault("keymap_slot12", "");
-	settings->setDefault("keymap_slot13", "");
-	settings->setDefault("keymap_slot14", "");
-	settings->setDefault("keymap_slot15", "");
-	settings->setDefault("keymap_slot16", "");
-	settings->setDefault("keymap_slot17", "");
-	settings->setDefault("keymap_slot18", "");
-	settings->setDefault("keymap_slot19", "");
-	settings->setDefault("keymap_slot20", "");
-	settings->setDefault("keymap_slot21", "");
-	settings->setDefault("keymap_slot22", "");
-	settings->setDefault("keymap_slot23", "");
-	settings->setDefault("keymap_slot24", "");
-	settings->setDefault("keymap_slot25", "");
-	settings->setDefault("keymap_slot26", "");
-	settings->setDefault("keymap_slot27", "");
-	settings->setDefault("keymap_slot28", "");
-	settings->setDefault("keymap_slot29", "");
-	settings->setDefault("keymap_slot30", "");
-	settings->setDefault("keymap_slot31", "");
-	settings->setDefault("keymap_slot32", "");
-
-#ifndef NDEBUG
-	// Default keybinds for quicktune in debug builds
-	settings->setDefault("keymap_quicktune_prev", "KEY_HOME");
-	settings->setDefault("keymap_quicktune_next", "KEY_END");
-	settings->setDefault("keymap_quicktune_dec", "KEY_NEXT");
-	settings->setDefault("keymap_quicktune_inc", "KEY_PRIOR");
-#else
-	settings->setDefault("keymap_quicktune_prev", "");
-	settings->setDefault("keymap_quicktune_next", "");
-	settings->setDefault("keymap_quicktune_dec", "");
-	settings->setDefault("keymap_quicktune_inc", "");
-#endif
+	settings->setDefault("remote_port", "30000");
+	set_keyboard_defaults(settings);
 
 	// Visuals
 #ifdef NDEBUG
@@ -579,11 +448,6 @@ void set_default_settings()
 	settings->setDefault("display_density_factor", "1");
 	settings->setDefault("dpi_change_notifier", "0");
 
-	// Altered settings for CIrrDeviceOSX
-#if !USE_SDL2 && defined(__MACH__) && defined(__APPLE__)
-	settings->setDefault("keymap_sneak", "KEY_SHIFT");
-#endif
-
 	settings->setDefault("touch_layout", "");
 	settings->setDefault("touchscreen_sensitivity", "0.2");
 	settings->setDefault("touchscreen_threshold", "20");
@@ -636,3 +500,117 @@ void set_default_settings()
 	// Tablets >= 6.0 use non-Android defaults for these settings
 #endif
 }
+
+#define USEKEY(name, value) settings->setIfMissing(name, value)
+#if USE_SDL2
+#define USEKEY2(name, value, _) USEKEY(name, value)
+#else
+#define USEKEY2(name, _, value) USEKEY(name, value)
+#endif
+
+void set_keyboard_defaults(Settings *settings)
+{
+	auto has_touch = detect_touch();
+
+	USEKEY2("save_keys_as_scancodes", "true", "false");
+	USEKEY2("keymap_forward", "<26>", "KEY_KEY_W");
+	USEKEY("keymap_autoforward", "");
+	USEKEY2("keymap_backward", "<22>", "KEY_KEY_S");
+	USEKEY2("keymap_left", "<4>", "KEY_KEY_A");
+	USEKEY2("keymap_right", "<7>", "KEY_KEY_D");
+	USEKEY2("keymap_jump", "<44>", "KEY_SPACE");
+#if !USE_SDL2 && defined(__MACH__) && defined(__APPLE__)
+	// Altered settings for CIrrDeviceOSX
+	USEKEY("keymap_sneak", "KEY_SHIFT");
+#else
+	USEKEY2("keymap_sneak", "<225>", "KEY_LSHIFT");
+#endif
+	USEKEY("keymap_dig", "KEY_LBUTTON");
+	USEKEY("keymap_place", "KEY_RBUTTON");
+	USEKEY2("keymap_drop", "<20>", "KEY_KEY_Q");
+	USEKEY2("keymap_zoom", "<29>", "KEY_KEY_Z");
+	USEKEY2("keymap_inventory", "<12>", "KEY_KEY_I");
+	USEKEY2("keymap_aux1", "<8>", "KEY_KEY_E");
+	USEKEY2("keymap_chat", "<23>", "KEY_KEY_T");
+	USEKEY2("keymap_cmd", "<56>", "/");
+	USEKEY2("keymap_cmd_local", "<55>", ".");
+	USEKEY2("keymap_minimap", "<25>", "KEY_KEY_V");
+	USEKEY2("keymap_console", "<67>", "KEY_F10");
+
+	// See https://github.com/minetest/minetest/issues/12792
+	USEKEY2("keymap_rangeselect", has_touch ? "<21>" : "", has_touch ? "KEY_KEY_R" : "");
+
+	USEKEY2("keymap_freemove", "<14>", "KEY_KEY_K");
+	USEKEY("keymap_pitchmove", "");
+	USEKEY2("keymap_fastmove", "<13>", "KEY_KEY_J");
+	USEKEY2("keymap_noclip", "<11>", "KEY_KEY_H");
+	USEKEY2("keymap_hotbar_next", "<17>", "KEY_KEY_N");
+	USEKEY2("keymap_hotbar_previous", "<5>", "KEY_KEY_B");
+	USEKEY2("keymap_mute", "<16>", "KEY_KEY_M");
+	USEKEY("keymap_increase_volume", "");
+	USEKEY("keymap_decrease_volume", "");
+	USEKEY("keymap_cinematic", "");
+	USEKEY("keymap_toggle_block_bounds", "");
+	USEKEY2("keymap_toggle_hud", "<58>", "KEY_F1");
+	USEKEY2("keymap_toggle_chat", "<59>", "KEY_F2");
+	USEKEY2("keymap_toggle_fog", "<60>", "KEY_F3");
+#ifndef NDEBUG
+	USEKEY2("keymap_toggle_update_camera", "<61>", "KEY_F4");
+#else
+	USEKEY("keymap_toggle_update_camera", "");
+#endif
+	USEKEY2("keymap_toggle_debug", "<62>", "KEY_F5");
+	USEKEY2("keymap_toggle_profiler", "<63>", "KEY_F6");
+	USEKEY2("keymap_camera_mode", "<6>", "KEY_KEY_C");
+	USEKEY2("keymap_screenshot", "<69>", "KEY_F12");
+	USEKEY2("keymap_fullscreen", "<68>", "KEY_F11");
+	USEKEY2("keymap_increase_viewing_range_min", "<46>", "+");
+	USEKEY2("keymap_decrease_viewing_range_min", "<45>", "-");
+	USEKEY2("keymap_slot1", "<30>", "KEY_KEY_1");
+	USEKEY2("keymap_slot2", "<31>", "KEY_KEY_2");
+	USEKEY2("keymap_slot3", "<32>", "KEY_KEY_3");
+	USEKEY2("keymap_slot4", "<33>", "KEY_KEY_4");
+	USEKEY2("keymap_slot5", "<34>", "KEY_KEY_5");
+	USEKEY2("keymap_slot6", "<35>", "KEY_KEY_6");
+	USEKEY2("keymap_slot7", "<36>", "KEY_KEY_7");
+	USEKEY2("keymap_slot8", "<37>", "KEY_KEY_8");
+	USEKEY2("keymap_slot9", "<38>", "KEY_KEY_9");
+	USEKEY2("keymap_slot10", "<39>", "KEY_KEY_0");
+	USEKEY("keymap_slot11", "");
+	USEKEY("keymap_slot12", "");
+	USEKEY("keymap_slot13", "");
+	USEKEY("keymap_slot14", "");
+	USEKEY("keymap_slot15", "");
+	USEKEY("keymap_slot16", "");
+	USEKEY("keymap_slot17", "");
+	USEKEY("keymap_slot18", "");
+	USEKEY("keymap_slot19", "");
+	USEKEY("keymap_slot20", "");
+	USEKEY("keymap_slot21", "");
+	USEKEY("keymap_slot22", "");
+	USEKEY("keymap_slot23", "");
+	USEKEY("keymap_slot24", "");
+	USEKEY("keymap_slot25", "");
+	USEKEY("keymap_slot26", "");
+	USEKEY("keymap_slot27", "");
+	USEKEY("keymap_slot28", "");
+	USEKEY("keymap_slot29", "");
+	USEKEY("keymap_slot30", "");
+	USEKEY("keymap_slot31", "");
+	USEKEY("keymap_slot32", "");
+
+#ifndef NDEBUG
+	// Default keybinds for quicktune in debug builds
+	USEKEY2("keymap_quicktune_prev", "<74>", "KEY_HOME");
+	USEKEY2("keymap_quicktune_next", "<77>", "KEY_END");
+	USEKEY2("keymap_quicktune_dec", "<81>", "KEY_NEXT");
+	USEKEY2("keymap_quicktune_inc", "<82>", "KEY_PRIOR");
+#else
+	USEKEY("keymap_quicktune_prev", "");
+	USEKEY("keymap_quicktune_next", "");
+	USEKEY("keymap_quicktune_dec", "");
+	USEKEY("keymap_quicktune_inc", "");
+#endif
+}
+#undef USEKEY
+#undef USEKEY2
