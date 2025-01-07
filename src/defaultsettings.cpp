@@ -501,15 +501,15 @@ void set_default_settings()
 #endif
 }
 
+void set_keyboard_defaults(Settings *settings, bool force_keycode)
+{
 #define USEKEY(name, value) settings->setIfMissing(name, value)
 #if USE_SDL2
-#define USEKEY2(name, value, _) USEKEY(name, value)
+#define USEKEY2(name, value, legacy) USEKEY(name, (force_keycode) ? (legacy) : (value))
 #else
 #define USEKEY2(name, _, value) USEKEY(name, value)
 #endif
 
-void set_keyboard_defaults(Settings *settings)
-{
 	auto has_touch = detect_touch();
 
 	USEKEY2("save_keys_as_scancodes", "true", "false");
@@ -611,6 +611,6 @@ void set_keyboard_defaults(Settings *settings)
 	USEKEY("keymap_quicktune_dec", "");
 	USEKEY("keymap_quicktune_inc", "");
 #endif
-}
 #undef USEKEY
 #undef USEKEY2
+}

@@ -15,5 +15,6 @@ void set_default_settings();
 /**
  * Use default preset for settings
  * @param settings pointer to settings
+ * @param force_keycode whether to unconditionally use keycode-based settings
  */
-void set_keyboard_defaults(Settings *settings);
+void set_keyboard_defaults(Settings *settings, bool force_keycode = false);
